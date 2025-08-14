@@ -5,7 +5,9 @@ import sys
 import json
 import subprocess
 import platform
+import time
 from pathlib import Path
+from typing import Dict
 
 # Add vendor directory to path for bundled libraries
 vendor_path = Path(__file__).parent / "vendor"
@@ -13,10 +15,11 @@ if str(vendor_path) not in sys.path:
     sys.path.insert(0, str(vendor_path))
 
 # Import bundled libraries
-from colors import orange, bright_orange, dark_orange, bold, underline, bright_white, color_manager
+from colors import orange, bright_orange, dark_orange, light_orange, bold, underline, bright_white, color_manager
 from icons import icons, build_icon, editor_icon, project_icon, settings_icon, config_icon, exit_icon
 from icons import success_icon, error_icon, warning_icon, back_icon, forward_icon, pointer_icon, clean_icon, trash_icon
 from cleaner import ProjectCleaner
+from project_renamer import ProjectRenamer
 
 # Platform-specific imports
 if platform.system().lower() == "windows":
@@ -52,7 +55,8 @@ class SubrealGUI:
                             config[key] = value
                     return config
             except (json.JSONDecodeError, IOError):
-                print("⚠️  Configuration file corrupted. Using defaults.")
+                self._display_boxed_menu("ERROR", ["Configuration file corrupted. Using defaults."])
+                input("Press Enter to continue...")
                 
         return default_config
     
@@ -82,7 +86,8 @@ class SubrealGUI:
                 json.dump(self.config, f, indent=2)
             return True
         except IOError:
-            print("❌ Failed to save configuration.")
+            self._display_boxed_menu("ERROR", ["Failed to save configuration."])
+            input("Press Enter to continue...")
             return False
     
     def clear_screen(self):
@@ -209,51 +214,80 @@ class SubrealGUI:
             'change': '[~]'
         }
 
-    def display_menu_with_selection(self, title, options, current_selection):
-        """Display menu with highlighted selection, colors, and beautiful theme"""
+    def _display_progress_bar(self, duration, prefix='', suffix='', length=50):
+        """Displays a simulated progress bar for a given duration."""
+        start_time = time.time()
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed > duration:
+                elapsed = duration
+            
+            percent = (elapsed / duration)
+            filled_length = int(length * percent)
+            bar = bright_orange('█' * filled_length) + orange('-' * (length - filled_length))
+            
+            sys.stdout.write(f'\r{prefix} |{bar}| {percent:.0%} {suffix}')
+            sys.stdout.flush()
+            
+            if elapsed == duration:
+                print()
+                break
+            
+            time.sleep(0.1)
+
+    def _display_boxed_menu(self, title, content_lines=None, options=None, current_selection=None):
         self.clear_screen()
         self.show_banner()
         
-        # Orange themed borders with color - match banner width
-        border_color = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border_color}")
+        width = 71
+        border_top = bright_orange("╭" + "─" * (width - 2) + "╮")
+        border_bottom = bright_orange("╰" + "─" * (width - 2) + "╯")
         
-        # Colorful title
+        print(f"\n{border_top}")
+        
         title_colored = bold(bright_orange(title))
-        title_line = f"|{title_colored.center(66 + len(title_colored) - len(title))}|"
+        title_line = f"│{title_colored.center(width - 2 + len(title_colored) - len(title))}│"
         print(title_line)
-        print(border_color)
         
-        # Display options with beautiful icons and colors
-        for i, option in enumerate(options):
-            if i == current_selection:
-                # Highlighted option with pointer and bright colors
-                pointer = bright_orange(pointer_icon())
-                option_colored = bold(bright_white(option))
-                line = f"| {pointer} {option_colored}"
-                # Pad to correct length accounting for color codes
-                visible_length = len(f"| {pointer_icon()} {option}")
-                padding = " " * (66 - visible_length)
-                print(f"{line}{padding} |")
-            else:
-                # Regular option with muted colors
-                option_colored = orange(option)
-                line = f"|   {option_colored}"
-                # Pad to correct length accounting for color codes
-                visible_length = len(f"|   {option}")
-                padding = " " * (66 - visible_length)
-                print(f"{line}{padding} |")
+        if content_lines:
+            print(bright_orange("├" + "─" * (width - 2) + "┤"))
+            for line in content_lines:
+                colored_line = orange(line)
+                visible_length = len(line)
+                padding = " " * (width - visible_length - 4)
+                print(f"│ {colored_line}{padding} │")
         
-        print(border_color)
+        if options:
+            print(bright_orange("├" + "─" * (width - 2) + "┤"))
+            for i, option in enumerate(options):
+                if i == current_selection:
+                    pointer = bright_orange(pointer_icon())
+                    option_colored = bold(bright_white(option))
+                    line = f"│ {pointer} {option_colored}"
+                    visible_length = len(f"|  {option}")
+                    padding = " " * (width - visible_length - 2)
+                    print(f"{line}{padding} │")
+                else:
+                    option_colored = orange(option)
+                    line = f"│   {option_colored}"
+                    visible_length = len(f"|   {option}")
+                    padding = " " * (width - visible_length - 2)
+                    print(f"{line}{padding} │")
+
+        print(border_bottom)
+
+    def display_menu_with_selection(self, title, options, current_selection):
+        """Display menu with highlighted selection, colors, and beautiful theme"""
+        self._display_boxed_menu(title, options=options, current_selection=current_selection)
         
         # Navigation info with history indicators
         nav_info = self._get_navigation_info()
         nav_colored = dark_orange(nav_info)
-        nav_line = f"| {nav_colored}"
+        nav_line = f"│ {nav_colored}"
         visible_nav_length = len(f"| {nav_info}")
-        nav_padding = " " * (66 - visible_nav_length)
-        print(f"{nav_line}{nav_padding} |")
-        print(border_color)
+        nav_padding = " " * (71 - visible_nav_length - 2)
+        print(f"{nav_line}{nav_padding} │")
+        print(bright_orange("╰" + "─"*69 + "╯"))
     
     def _get_navigation_info(self):
         """Get navigation information with back/forward indicators"""
@@ -268,46 +302,45 @@ class SubrealGUI:
         return " ".join(nav_parts)[:50]  # Truncate if too long
     
     def show_banner(self):
-        """Display welcome banner with beautiful Subreal ASCII art"""
-        # Orange themed banner with custom Subreal logo
-        border = bright_orange("+==================================================================+")
+        """Display welcome banner with clean Subreal ASCII art"""
+        # Clean orange themed banner
+        border = bright_orange("╭" + "─"*71 + "╮")
         
         print(f"\n{border}")
-        print(f"{bright_orange('|')}                                                                  {bright_orange('|')}")
+        print(f"{bright_orange('│')}                                                                       {bright_orange('│')}")
         
-        # Beautiful Subreal ASCII art in bright orange
+        # Clean Subreal ASCII art in orange
         subreal_lines = [
-            " ____             __                            ___      ",
-            "/\\  _`\\          /\\ \\                          /\\_ \\     ",
-            "\\ \\,\\L\\_\\  __  __\\ \\ \\____  _ __    __     __  \\//\\ \\    ",
-            " \\/_\\__ \\ /\\ \\/\\ \\\\ \\ '__`\\/\\`'__\\/'__`\\ /'__`\\  \\ \\ \\   ",
-            "   /\\ \\L\\ \\ \\ \\_\\ \\\\ \\ \\L\\ \\ \\ \\//\\  __//\\ \\L\\.\\_ \\_\\ \\_ ",
-            "   \\ `\\____\\ \\____/ \\ \\_,__/\\ \\_\\\\ \\____\\ \\__/.\\_\\/\\____\\",
-            "    \\/_____/\\/___/   \\/___/  \\/_/ \\/____/\\/__/\\/_/\\/____/"
+            "███████╗ ██╗   ██╗ ██████╗  ██████╗  ███████╗  █████╗  ██╗     ",
+            "██╔════╝ ██║   ██║ ██╔══██╗ ██╔══██╗ ██╔════╝ ██╔══██╗ ██║     ",
+            "███████╗ ██║   ██║ ██████╔╝ ██████╔╝ █████╗   ███████║ ██║     ",
+            "╚════██║ ██║   ██║ ██╔══██╗ ██╔══██╗ ██╔══╝   ██╔══██║ ██║     ",
+            "███████║ ╚██████╔╝ ██║  ██║ ██║  ██║ ███████╗ ██║  ██║ ███████╗",
+            "╚══════╝  ╚═════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═╝ ╚══════╝"
         ]
         
         for line in subreal_lines:
-            # Center each line and apply bright orange color
+            # Center each line and apply consistent orange color
             colored_line = bold(bright_orange(line))
-            padding = (66 - len(line)) // 2  # Center in 66-char width
-            print(f"{bright_orange('|')}{' ' * padding}{colored_line}{' ' * (66 - len(line) - padding)}{bright_orange('|')}")
+            padding = (71 - len(line)) // 2  # Center in 71-char width
+            print(f"{bright_orange('│')}{' ' * padding}{colored_line}{' ' * (71 - len(line) - padding)}{bright_orange('│')}")
         
-        print(f"{bright_orange('|')}                                                                  {bright_orange('|')}")
+        print(f"{bright_orange('│')}                                                                       {bright_orange('│')}")
         
-        # Version info with icons
-        editor_icon_colored = bright_orange(editor_icon())
-        build_icon_colored = bright_orange(build_icon())
+        # Version info with consistent orange icons
+        editor_icon_colored = orange(editor_icon())
+        build_icon_colored = orange(build_icon())
         
         version_text = f"{editor_icon_colored} {bold(bright_white('Console GUI Manager v1.0'))} {editor_icon_colored}"
-        version_padding = (66 - len(f"{editor_icon()} Console GUI Manager v1.0 {editor_icon()}")) // 2
-        print(f"{bright_orange('|')}{' ' * version_padding}{version_text}{' ' * (66 - len(f'{editor_icon()} Console GUI Manager v1.0 {editor_icon()}') - version_padding)}{bright_orange('|')}")
+        version_padding = (71 - len(f"{editor_icon()} Console GUI Manager v1.0 {editor_icon()}")) // 2
+        print(f"{bright_orange('│')}{' ' * version_padding}{version_text}{' ' * (71 - len(f'{editor_icon()} Console GUI Manager v1.0 {editor_icon()}') - version_padding)}{bright_orange('│')}")
         
         setup_text = f"{build_icon_colored} {bold(orange('IDE-Free Unreal Engine Development Setup'))} {build_icon_colored}"
-        setup_padding = (66 - len(f"{build_icon()} IDE-Free Unreal Engine Development Setup {build_icon()}")) // 2
-        print(f"{bright_orange('|')}{' ' * setup_padding}{setup_text}{' ' * (66 - len(f'{build_icon()} IDE-Free Unreal Engine Development Setup {build_icon()}') - setup_padding)}{bright_orange('|')}")
+        setup_padding = (71 - len(f"{build_icon()} IDE-Free Unreal Engine Development Setup {build_icon()}")) // 2
+        print(f"{bright_orange('│')}{' ' * setup_padding}{setup_text}{' ' * (71 - len(f'{build_icon()} IDE-Free Unreal Engine Development Setup {build_icon()}') - setup_padding)}{bright_orange('│')}")
         
-        print(f"{bright_orange('|')}                                                                  {bright_orange('|')}")
-        print(border)
+        print(f"{bright_orange('│')}                                                                       {bright_orange('│')}")
+        print(bright_orange("╰" + "─"*71 + "╯"))
     
     def get_paths(self):
         """Get calculated paths based on configuration"""
@@ -362,94 +395,24 @@ class SubrealGUI:
         self.current_selection = 0
         
         while True:
-            self.clear_screen()
-            self.show_banner()
-            
-            print("\nWelcome to Subreal Engine Console GUI!")
-            border = bright_orange("+" + "="*66 + "+")
-            print(f"\n{border}")
-            
-            title = bold(bright_orange("INITIAL SETUP"))
-            print(f"|{title.center(66 + len(title) - len('INITIAL SETUP'))}|")
-            print(border)
-            
-            for i, option in enumerate(options):
-                if i == self.current_selection:
-                    pointer = bright_orange(">>")
-                    option_colored = bold(bright_white(option))
-                    line = f"| {pointer} {option_colored}"
-                    visible_length = len(f"| >> {option}")
-                    padding = " " * (66 - visible_length)
-                    print(f"{line}{padding} |")
-                else:
-                    option_colored = orange(option)
-                    line = f"|   {option_colored}"
-                    visible_length = len(f"|   {option}")
-                    padding = " " * (66 - visible_length)
-                    print(f"{line}{padding} |")
-            
-            print(border)
-            nav_text = dark_orange("Navigation: ↑↓WS=Move | Enter=Select | ESC=Back")
-            nav_line = f"| {nav_text}"
-            nav_padding = " " * (66 - len("| Navigation: ↑↓WS=Move | Enter=Select | ESC=Back"))
-            print(f"{nav_line}{nav_padding} |")
-            print(border)
+            self._display_boxed_menu("INITIAL SETUP", content_lines=["Welcome to Subreal Engine Console GUI!"], options=options, current_selection=self.current_selection)
             
             key = self.get_key_input()
             if key == 'UP' and self.current_selection > 0:
                 self.current_selection -= 1
             elif key == 'DOWN' and self.current_selection < len(options) - 1:
                 self.current_selection += 1
-            elif key == 'LEFT':
-                # Left arrow: go to previous option
-                if self.current_selection > 0:
-                    self.current_selection -= 1
-            elif key == 'RIGHT':
-                # Right arrow: go to next option
-                if self.current_selection < len(options) - 1:
-                    self.current_selection += 1
             elif key == 'ENTER':
                 if self.current_selection == 0:  # Use default
                     issues = self.validate_paths()
                     if issues:
-                        self.clear_screen()
-                        self.show_banner()
-                        
-                        border = "+" + "="*58 + "+"
-                        print(f"\n{border}")
-                        print(f"|{'CONFIGURATION ISSUES'.center(58)}|")
-                        print(border)
-                        print("| [!] Issues found with default configuration:            |")
-                        print("|                                                          |")
-                        for issue in issues:
-                            truncated = issue[:54] if len(issue) <= 54 else issue[:51] + "..."
-                            print(f"| * {truncated.ljust(54)} |")
-                        print("|                                                          |")
-                        print("| Would you like to customize the configuration instead?  |")
-                        print("| Press Enter to customize, or ESC to continue defaults   |")
-                        print(border)
-                        
-                        key = self.get_key_input()
-                        if key == 'ENTER':
-                            self.customize_config()
-                        else:
-                            print("| [!] Continuing with potentially invalid paths...        |")
-                            print(border)
-                            print("| Press Enter to continue...                               |")
-                            print(border)
-                            input()
+                        content = ["Issues found with default configuration:"] + issues
+                        self._display_boxed_menu("CONFIGURATION ISSUES", content_lines=content)
+                        input("Press Enter to continue...")
+                        self.customize_config()
                     else:
-                        self.clear_screen()
-                        self.show_banner()
-                        border = "+" + "="*58 + "+"
-                        print(f"\n{border}")
-                        print(f"|{'CONFIGURATION VALIDATED'.center(58)}|")
-                        print(border)
-                        print("| [✓] Default configuration validated successfully!       |")
-                        print(border)
-                        print("| Press Enter to continue...                               |")
-                        print(border)
-                        input()
+                        self._display_boxed_menu("CONFIGURATION VALIDATED", content_lines=["Default configuration validated successfully!"])
+                        input("Press Enter to continue...")
                     break
                 elif self.current_selection == 1:  # Customize
                     self.customize_config()
@@ -457,9 +420,7 @@ class SubrealGUI:
     
     def customize_config(self):
         """Interactive configuration customization"""
-        print("\n" + "="*60)
-        print("           🔧 CONFIGURATION SETUP")
-        print("="*60)
+        self._display_boxed_menu("CONFIGURATION SETUP", content_lines=["Enter new values or press Enter to keep current."])
         
         # Project Name
         current = self.config["project_name"]
@@ -498,13 +459,13 @@ class SubrealGUI:
                 self.config["project_root"] = new_root
         
         if self.save_config():
-            print("\n[✓] Configuration saved successfully!")
+            self._display_boxed_menu("SUCCESS", ["Configuration saved successfully!"])
         else:
-            print("\n[X] Failed to save configuration.")
+            self._display_boxed_menu("ERROR", ["Failed to save configuration."])
+        input("Press Enter to continue...")
     
     def show_main_menu(self):
         """Display main menu with beautiful icons and browser-like navigation"""
-        # Add to navigation history
         self.add_to_history("main_menu", self.current_selection)
         
         options = [
@@ -525,22 +486,18 @@ class SubrealGUI:
             elif key == 'DOWN' and self.current_selection < len(options) - 1:
                 self.current_selection += 1
             elif key == 'LEFT':
-                # Browser-like back navigation
                 history_entry = self.go_back()
                 if history_entry:
                     if history_entry['menu'] == 'main_menu':
                         self.current_selection = history_entry['selection']
                     else:
-                        # Navigate to the historical menu
                         return self._navigate_to_menu(history_entry['menu'], history_entry['selection'])
             elif key == 'RIGHT':
-                # Browser-like forward navigation
                 history_entry = self.go_forward()
                 if history_entry:
                     if history_entry['menu'] == 'main_menu':
                         self.current_selection = history_entry['selection']
                     else:
-                        # Navigate to the historical menu
                         return self._navigate_to_menu(history_entry['menu'], history_entry['selection'])
             elif key == 'ENTER':
                 return self.current_selection + 1
@@ -553,290 +510,465 @@ class SubrealGUI:
             return "project_management"
         elif menu_name == "engine_settings":
             return "engine_settings"
-        # Add more menu mappings as needed
         return None
     
     def build_project(self):
-        """Build the Unreal project"""
-        self.clear_screen()
-        self.show_banner()
+        """Build the Unreal project using integrated build functionality"""
+        self._display_boxed_menu("BUILD PROJECT", content_lines=["Building project...", "Please wait..."])
+        self._display_progress_bar(2, prefix='Preparing', suffix='Complete')
         
-        border = "+" + "="*58 + "+"
-        print(f"\n{border}")
-        print(f"|{'BUILD PROJECT'.center(58)}|")
-        print(border)
-        print("| [#] Building project...                                  |")
-        print(border)
+        # Integrated functionality from build.bat
         paths = self.get_paths()
+        project_name = self.config["project_name"]
         
+        # Build command construction (replaces vars.bat + build.bat functionality)
         if self.platform_name == "windows":
+            build_tool = Path(self.config["ue_dir"]) / "Engine" / "Build" / "BatchFiles" / "Build.bat"
             cmd = [
-                str(paths["build_tool"]),
-                f"{self.config['project_name']}Editor",
-                "Win64",
+                str(build_tool), 
+                f"{project_name}Editor", 
+                "Win64", 
                 "Development", 
-                str(paths["uproject_path"]),
-                "-waitmutex",
+                str(paths["uproject_path"]), 
+                "-waitmutex", 
                 "-NoHotReload"
             ]
         else:  # macOS
+            build_tool = Path(self.config["ue_dir"]) / "Engine" / "Build" / "BatchFiles" / "Mac" / "Build.sh"
             cmd = [
-                "bash",
-                str(paths["build_tool"]),
-                f"{self.config['project_name']}Editor",
-                "Mac",
-                "Development",
-                str(paths["uproject_path"]),
-                "-waitmutex",
+                "bash", 
+                str(build_tool), 
+                f"{project_name}Editor", 
+                "Mac", 
+                "Development", 
+                str(paths["uproject_path"]), 
+                "-waitmutex", 
                 "-NoHotReload"
             ]
         
+        # Validate build tool exists
+        if not Path(cmd[0] if self.platform_name != "windows" else cmd[0]).exists():
+            self._display_boxed_menu("ERROR", ["Build tool not found. Check UE installation path.", f"Expected: {cmd[0]}"])
+            input("Press Enter to continue...")
+            return
+            
         try:
-            print("| Executing build command...                               |")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            # Show actual building progress
+            self._display_progress_bar(8, prefix='Building', suffix='Complete')
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
             
             if result.returncode == 0:
-                print("| [✓] Build completed successfully!                       |")
+                self._display_boxed_menu("SUCCESS", ["Build completed successfully!", f"Project: {project_name}", f"Platform: {self.platform_name.title()}"])
             else:
-                print("| [X] Build failed!                                       |")
-                if result.stderr:
-                    print("|                                                          |")
-                    print("| Error output:                                            |")
-                    # Show first few lines of error, truncated to fit
-                    error_lines = result.stderr.split('\n')[:5]
-                    for line in error_lines:
-                        truncated = line[:56] if len(line) <= 56 else line[:53] + "..."
-                        if truncated.strip():
-                            print(f"| {truncated.ljust(56)} |")
-                    
+                error_lines = result.stderr.split('\n')[:5] if result.stderr else ["Unknown build error"]
+                self._display_boxed_menu("BUILD FAILED", ["Build failed with errors:", ""] + [line.strip() for line in error_lines if line.strip()])
         except subprocess.TimeoutExpired:
-            print("| [!] Build timed out after 5 minutes.                    |")
+            self._display_boxed_menu("ERROR", ["Build timed out after 10 minutes.", "Try building smaller portions or check system resources."])
         except FileNotFoundError:
-            print("| [X] Build tool not found. Check configuration.          |")
+            self._display_boxed_menu("ERROR", ["Build tool executable not found.", "Verify Unreal Engine installation path."])
         except Exception as e:
-            error_msg = str(e)[:50] if len(str(e)) <= 50 else str(e)[:47] + "..."
-            print(f"| [X] Build error: {error_msg.ljust(42)} |")
-            
-        print(border)
-        print("| Press Enter to continue...                               |")
-        print(border)
-        input()
+            self._display_boxed_menu("ERROR", [f"Unexpected build error: {str(e)[:50]}"])
+        
+        input("Press Enter to continue...")
     
     def launch_editor(self):
-        """Launch Unreal Editor"""
-        self.clear_screen()
-        self.show_banner()
+        """Launch Unreal Editor using integrated functionality"""
+        self._display_boxed_menu("LAUNCH EDITOR", content_lines=["Launching Unreal Editor...", "Please wait..."])
         
-        border = "+" + "="*58 + "+"
-        print(f"\n{border}")
-        print(f"|{'LAUNCH EDITOR'.center(58)}|")
-        print(border)
-        print("| [>] Launching Unreal Editor...                          |")
+        # Integrated functionality from vars.bat + editor.bat
+        project_name = self.config["project_name"]
+        ue_dir = Path(self.config["ue_dir"])
+        project_dir = Path(self.config["project_root"]) / project_name
+        uproject_path = project_dir / f"{project_name}.uproject"
         
-        paths = self.get_paths()
-        cmd = [str(paths["editor_exe"]), str(paths["uproject_path"])]
+        # Build editor executable path (replaces vars.bat functionality)
+        if self.platform_name == "windows":
+            editor_exe = ue_dir / "Engine" / "Binaries" / "Win64" / self.config["editor_exe_name"]
+        else:  # macOS
+            editor_exe = ue_dir / "Engine" / "Binaries" / "Mac" / self.config["editor_exe_name"]
+        
+        # Validate paths exist
+        if not editor_exe.exists():
+            self._display_boxed_menu("ERROR", ["Editor executable not found.", f"Expected: {editor_exe}", "Check Unreal Engine installation path."])
+            input("Press Enter to continue...")
+            return
+            
+        if not uproject_path.exists():
+            self._display_boxed_menu("ERROR", ["Project file not found.", f"Expected: {uproject_path}", "Check project name and root path."])
+            input("Press Enter to continue...")
+            return
+        
+        # Launch command (replaces editor.bat functionality)
+        cmd = [str(editor_exe), str(uproject_path)]
         
         try:
+            self._display_progress_bar(3, prefix='Starting', suffix='Complete')
+            
             if self.platform_name == "windows":
+                # Launch in new console window (equivalent to 'start' in batch)
                 subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
-            else:
+            else:  # macOS
                 subprocess.Popen(cmd)
-            print("| [✓] Editor launched successfully!                       |")
-            
+                
+            self._display_boxed_menu("SUCCESS", ["Editor launched successfully!", f"Project: {project_name}", f"Editor: {editor_exe.name}", "Check for editor window on your desktop."])
         except FileNotFoundError:
-            print("| [X] Editor executable not found. Check configuration.   |")
+            self._display_boxed_menu("ERROR", ["Failed to start editor process.", "Verify Unreal Engine installation."])
+        except PermissionError:
+            self._display_boxed_menu("ERROR", ["Permission denied launching editor.", "Run as administrator or check file permissions."])
         except Exception as e:
-            error_msg = str(e)[:50] if len(str(e)) <= 50 else str(e)[:47] + "..."
-            print(f"| [X] Launch error: {error_msg.ljust(43)} |")
+            self._display_boxed_menu("ERROR", [f"Unexpected launch error: {str(e)[:50]}"])
             
-        print(border)
-        print("| Press Enter to continue...                               |")
-        print(border)
-        input()
+        input("Press Enter to continue...")
     
     def project_management(self):
         """Project management submenu with browser-like navigation"""
-        # Add to navigation history
         self.add_to_history("project_management", self.current_selection)
-        
         options = [
             f"{icons.get_icon('info')} Show Project Info",
             f"{icons.get_icon('validate')} Validate Paths", 
             f"{icons.get_icon('directory')} Open Project Directory",
+            f"{icons.get_icon('change')} Rename Project",
             f"{clean_icon()} Clean Project Files",
             f"{back_icon()} Back to Main Menu"
         ]
-        
         while True:
-            self.display_menu_with_selection("PROJECT MANAGEMENT", options, self.current_selection)
-            
+            self._display_boxed_menu("PROJECT MANAGEMENT", options=options, current_selection=self.current_selection)
             key = self.get_key_input()
-            choice = None
-            
             if key == 'UP' and self.current_selection > 0:
                 self.current_selection -= 1
             elif key == 'DOWN' and self.current_selection < len(options) - 1:
                 self.current_selection += 1
-            elif key == 'LEFT':
-                # Browser-like back navigation
-                history_entry = self.go_back()
-                if history_entry:
-                    if history_entry['menu'] == 'main_menu':
-                        return  # Go back to main menu
-                    elif history_entry['menu'] == 'project_management':
-                        self.current_selection = history_entry['selection']
-            elif key == 'RIGHT':
-                # Browser-like forward navigation
-                history_entry = self.go_forward()
-                if history_entry:
-                    if history_entry['menu'] == 'project_management':
-                        self.current_selection = history_entry['selection']
             elif key == 'ENTER':
-                choice = self.current_selection + 1
+                if self.current_selection == 0:
+                    self.show_project_info()
+                elif self.current_selection == 1:
+                    self.validate_and_show_paths()
+                elif self.current_selection == 2:
+                    self.open_project_directory()
+                elif self.current_selection == 3:
+                    self.rename_project()
+                elif self.current_selection == 4:
+                    self.clean_project_files()
+                elif self.current_selection == 5:
+                    break
             elif key == 'ESC':
-                break
-                
-            if choice == 1:
-                self.show_project_info()
-            elif choice == 2:
-                self.validate_and_show_paths()
-            elif choice == 3:
-                self.open_project_directory()
-            elif choice == 4:
-                self.clean_project_files()
-            elif choice == 5:
                 break
     
     def show_project_info(self):
         """Display current project information with colors"""
-        self.clear_screen()
-        self.show_banner()
         paths = self.get_paths()
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title = bold(bright_orange("PROJECT INFORMATION"))
-        print(f"|{title.center(66 + len(title) - len('PROJECT INFORMATION'))}|")
-        print(border)
-        
-        # Colorful project information
-        info_icon = bright_orange(icons.get_icon('info'))
-        project_name = bold(bright_white(self.config['project_name'][:40]))
-        ue_version = orange(self.config['ue_version'][:42])
-        platform_name = orange(self.platform_name.title()[:44])
-        
-        print(f"| {info_icon} Project Name: {project_name.ljust(48 + len(project_name) - len(self.config['project_name'][:40]))} |")
-        print(f"| {info_icon} UE Version: {ue_version.ljust(50 + len(ue_version) - len(self.config['ue_version'][:42]))} |")
-        print(f"| {info_icon} Platform: {platform_name.ljust(52 + len(platform_name) - len(self.platform_name.title()[:44]))} |")
-        
-        dir_str = str(paths['project_dir'])[:58]
-        project_dir = dark_orange(dir_str)
-        print(f"| {info_icon} Project Dir: {project_dir.ljust(58 + len(project_dir) - len(dir_str))} |")
-        
-        print(border)
-        continue_msg = dark_orange("Press Enter to continue...")
-        print(f"| {continue_msg.ljust(66 + len(continue_msg) - len('Press Enter to continue...'))} |")
-        print(border)
-        input()
+        content = [
+            f"Project Name: {self.config['project_name']}",
+            f"UE Version: {self.config['ue_version']}",
+            f"Platform: {self.platform_name.title()}",
+            f"Project Dir: {paths['project_dir']}"
+        ]
+        self._display_boxed_menu("PROJECT INFORMATION", content_lines=content)
+        input("Press Enter to continue...")
     
     def validate_and_show_paths(self):
         """Validate and display path status"""
-        self.clear_screen()
-        self.show_banner()
-        
-        border = "+" + "="*58 + "+"
-        print(f"\n{border}")
-        print(f"|{'PATH VALIDATION'.center(58)}|")
-        print(border)
-        
         issues = self.validate_paths()
-        
         if not issues:
-            print("| [✓] All paths are valid!                                 |")
+            self._display_boxed_menu("PATH VALIDATION", ["All paths are valid!"])
         else:
-            print("| [!] Path validation issues found:                       |")
-            print("|                                                          |")
-            for issue in issues:
-                # Truncate long paths to fit in the box
-                truncated = issue[:54] if len(issue) <= 54 else issue[:51] + "..."
-                print(f"| * {truncated.ljust(54)} |")
-        
-        print(border)
-        print("| Press Enter to continue...                               |")
-        print(border)
-        input()
+            self._display_boxed_menu("PATH VALIDATION", ["Path validation issues found:"] + issues)
+        input("Press Enter to continue...")
     
     def open_project_directory(self):
         """Open project directory in file explorer"""
-        self.clear_screen()
-        self.show_banner()
         paths = self.get_paths()
-        
         try:
             if self.platform_name == "windows":
                 subprocess.run(["explorer", str(paths["project_dir"])])
             else:  # macOS
                 subprocess.run(["open", str(paths["project_dir"])])
-            print("✅ Project directory opened!")
+            self._display_boxed_menu("SUCCESS", ["Project directory opened!"])
         except Exception as e:
-            print(f"❌ Could not open directory: {e}")
+            self._display_boxed_menu("ERROR", [f"Could not open directory: {e}"])
+        input("Press Enter to continue...")
+    
+    def rename_project(self):
+        """Rename project with comprehensive validation and safety checks"""
+        try:
+            # Initialize renamer
+            renamer = ProjectRenamer(self.config["project_root"], self.config["project_name"])
             
-        input("\nPress Enter to continue...")
+            # Step 1: Detect project type
+            self._display_boxed_menu("ANALYZING PROJECT", ["Detecting project type...", "Please wait..."])
+            self._display_progress_bar(2, prefix='Scanning', suffix='Complete')
+            
+            project_info = renamer.detect_project_type()
+            
+            if 'error' in project_info:
+                self._display_boxed_menu("ERROR", [project_info['error']])
+                input("Press Enter to continue...")
+                return
+            
+            # Step 2: Show project analysis
+            self._show_project_analysis(project_info)
+            
+            # Step 3: Get new name from user
+            new_name = self._get_new_project_name()
+            if not new_name:
+                return  # User cancelled
+            
+            # Step 4: Validate new name
+            validation = renamer.validate_new_name(new_name)
+            if not validation['valid']:
+                self._display_boxed_menu("INVALID PROJECT NAME", validation['errors'])
+                input("Press Enter to continue...")
+                return
+            
+            # Step 5: Show warnings and get confirmation
+            if not self._confirm_project_rename(new_name, project_info, validation):
+                return  # User cancelled
+            
+            # Step 6: Create backup and perform rename
+            self._perform_project_rename(renamer, new_name, project_info)
+            
+        except Exception as e:
+            self._display_boxed_menu("UNEXPECTED ERROR", [f"Project rename failed: {str(e)[:60]}"])
+            input("Press Enter to continue...")
+    
+    def _show_project_analysis(self, project_info):
+        """Display project type analysis"""
+        content = [
+            f"Project Type: {project_info['type'].upper()}",
+            f"Has Source Code: {'Yes' if project_info['has_source'] else 'No'}",
+            f"Has Binaries: {'Yes' if project_info['has_binaries'] else 'No'}"
+        ]
+        
+        if project_info['type'] == 'cpp':
+            content.append(f"C++ Modules: {len(project_info['modules'])}")
+            content.append(f"Source Files: {len(project_info['source_files'])}")
+            content.append("")
+            content.append(f"{warning_icon()} C++ projects require additional steps")
+        else:
+            content.append("")
+            content.append(f"{success_icon()} Blueprint-only project (simpler rename)")
+        
+        if 'warning' in project_info:
+            content.append(f"{warning_icon()} {project_info['warning']}")
+        
+        self._display_boxed_menu("PROJECT ANALYSIS", content_lines=content)
+        input("Press Enter to continue...")
+    
+    def _get_new_project_name(self) -> str:
+        """Get new project name from user"""
+        self._display_boxed_menu("ENTER NEW PROJECT NAME", [
+            f"Current project: {self.config['project_name']}",
+            "",
+            "Enter new project name:",
+            "• Leave empty to cancel",
+            "• Avoid spaces and special characters",
+            "• Use CamelCase or underscore_case"
+        ])
+        
+        new_name = input("New project name: ").strip()
+        return new_name if new_name else None
+    
+    def _confirm_project_rename(self, new_name: str, project_info: Dict, validation: Dict) -> bool:
+        """Show confirmation dialog with warnings"""
+        content = [
+            f"Rename '{self.config['project_name']}' to '{new_name}'",
+            "",
+            f"{warning_icon()} WARNING: This action cannot be undone!",
+            f"{warning_icon()} Complex projects may have issues!",
+            ""
+        ]
+        
+        if project_info['type'] == 'cpp':
+            content.extend([
+                f"C++ Project Changes:",
+                f"• Rename source files and directories",
+                f"• Update #include statements", 
+                f"• Update module references",
+                f"• Add redirect entries",
+                f"• Clean generated files",
+                ""
+            ])
+        else:
+            content.extend([
+                f"Blueprint Project Changes:",
+                f"• Rename .uproject file",
+                f"• Update configuration files",
+                f"• Rename project directory",
+                ""
+            ])
+        
+        if validation['warnings']:
+            content.append("Warnings:")
+            for warning in validation['warnings']:
+                content.append(f"• {warning}")
+            content.append("")
+        
+        content.extend([
+            "A backup will be created before renaming.",
+            "",
+            f"{success_icon()} Proceed with rename?",
+            f"{error_icon()} Cancel operation?"
+        ])
+        
+        options = [
+            f"{success_icon()} Yes, Rename Project",
+            f"{error_icon()} No, Cancel"
+        ]
+        
+        current_selection = 0
+        while True:
+            self._display_boxed_menu("CONFIRM PROJECT RENAME", content_lines=content, options=options, current_selection=current_selection)
+            key = self.get_key_input()
+            if key == 'UP' and current_selection > 0:
+                current_selection -= 1
+            elif key == 'DOWN' and current_selection < len(options) - 1:
+                current_selection += 1
+            elif key == 'ENTER':
+                return current_selection == 0
+            elif key == 'ESC':
+                return False
+    
+    def _perform_project_rename(self, renamer: ProjectRenamer, new_name: str, project_info: Dict):
+        """Perform the actual project rename with progress tracking"""
+        try:
+            # Create backup
+            self._display_boxed_menu("CREATING BACKUP", ["Creating project backup...", "Please wait..."])
+            self._display_progress_bar(3, prefix='Backing up', suffix='Complete')
+            
+            backup_path = renamer.create_backup()
+            
+            # Rename files and update content
+            self._display_boxed_menu("RENAMING PROJECT", ["Updating project files...", "Please wait..."])
+            self._display_progress_bar(5, prefix='Renaming', suffix='Complete')
+            
+            rename_result = renamer.rename_project_files(new_name)
+            
+            # Rename project directory
+            self._display_boxed_menu("FINALIZING", ["Renaming project directory...", "Please wait..."])
+            self._display_progress_bar(2, prefix='Finalizing', suffix='Complete')
+            
+            if renamer.rename_project_directory(new_name):
+                # Update configuration
+                self.config["project_name"] = new_name
+                self.save_config()
+                
+                # Show success
+                success_content = [
+                    f"✅ Project successfully renamed!",
+                    f"Old name: {renamer.current_name}",
+                    f"New name: {new_name}",
+                    f"Backup created: {Path(backup_path).name}",
+                    "",
+                    "Changes made:"
+                ]
+                
+                for change in rename_result['changes'][:10]:  # Show first 10 changes
+                    success_content.append(f"• {change}")
+                
+                if len(rename_result['changes']) > 10:
+                    success_content.append(f"... and {len(rename_result['changes']) - 10} more changes")
+                
+                if rename_result['errors']:
+                    success_content.append("")
+                    success_content.append("⚠️ Some issues occurred:")
+                    for error in rename_result['errors'][:3]:
+                        success_content.append(f"• {error}")
+                
+                if project_info['type'] == 'cpp':
+                    success_content.extend([
+                        "",
+                        "📝 Next steps for C++ projects:",
+                        "• Right-click .uproject → Generate VS files",
+                        "• Recompile your project",
+                        "• Test all Blueprint references"
+                    ])
+                
+                self._display_boxed_menu("RENAME SUCCESSFUL", content_lines=success_content)
+            else:
+                # Directory rename failed
+                self._display_boxed_menu("ERROR", [
+                    "Failed to rename project directory.",
+                    "Files have been updated but directory rename failed.",
+                    "You may need to rename manually or restore from backup."
+                ])
+                
+        except Exception as e:
+            # Show rollback option
+            self._handle_rename_failure(renamer, str(e))
+        
+        input("Press Enter to continue...")
+    
+    def _handle_rename_failure(self, renamer: ProjectRenamer, error: str):
+        """Handle rename failure with rollback option"""
+        content = [
+            "Project rename failed!",
+            f"Error: {error[:50]}",
+            "",
+            "Would you like to restore from backup?"
+        ]
+        
+        options = [
+            f"{success_icon()} Yes, Restore Backup",
+            f"{error_icon()} No, Keep Changes"
+        ]
+        
+        current_selection = 0
+        while True:
+            self._display_boxed_menu("RENAME FAILED", content_lines=content, options=options, current_selection=current_selection)
+            key = self.get_key_input()
+            if key == 'UP' and current_selection > 0:
+                current_selection -= 1
+            elif key == 'DOWN' and current_selection < len(options) - 1:
+                current_selection += 1
+            elif key == 'ENTER':
+                if current_selection == 0:
+                    # Attempt rollback
+                    self._display_boxed_menu("RESTORING BACKUP", ["Restoring project from backup..."])
+                    self._display_progress_bar(3, prefix='Restoring', suffix='Complete')
+                    
+                    if renamer.rollback_changes():
+                        self._display_boxed_menu("SUCCESS", ["Project restored from backup successfully!"])
+                    else:
+                        self._display_boxed_menu("ERROR", ["Failed to restore from backup.", "Manual recovery may be needed."])
+                break
+            elif key == 'ESC':
+                break
     
     def clean_project_files(self):
         """Clean non-essential project files with preview and confirmation"""
         try:
             paths = self.get_paths()
             project_dir = paths['project_dir']
-            
             if not project_dir.exists():
-                self._show_error_dialog("Project directory not found", 
-                                       f"Cannot find project directory: {project_dir}")
+                self._display_boxed_menu("ERROR", [f"Project directory not found: {project_dir}"])
                 return
             
-            # Initialize cleaner
             cleaner = ProjectCleaner(str(project_dir))
-            
-            # Show scanning progress
-            self._show_scanning_dialog()
-            
-            # Scan project
+            self._display_boxed_menu("SCANNING PROJECT", ["Scanning project for cleanup candidates...", "Please wait..."])
+            self._display_progress_bar(2, prefix='Scanning', suffix='Complete')
             scan_results = cleaner.scan_project()
             
-            # Show scan results and get user decisions
             cleanup_options = self._show_cleanup_preview(cleaner, scan_results)
             if cleanup_options:
-                # Perform cleanup with user options
                 self._perform_cleanup(cleaner, scan_results, cleanup_options)
-            
         except Exception as e:
-            self._show_error_dialog("Cleanup Error", f"An error occurred during cleanup: {str(e)}")
-    
-    def _show_scanning_dialog(self):
-        """Show scanning progress dialog"""
-        self.clear_screen()
-        self.show_banner()
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title = bold(bright_orange("SCANNING PROJECT"))
-        print(f"|{title.center(66 + len(title) - len('SCANNING PROJECT'))}|")
-        print(border)
-        
-        scanning_icon = bright_orange(icons.get_icon('working'))
-        print(f"| {scanning_icon} Scanning project for cleanup candidates...             |")
-        print(f"| {scanning_icon} Analyzing file patterns and sizes...                  |")
-        print(f"| {scanning_icon} Please wait...                                        |")
-        print(border)
+            self._display_boxed_menu("ERROR", [f"An error occurred during cleanup: {str(e)}"])
     
     def _show_cleanup_preview(self, cleaner: ProjectCleaner, scan_results: dict) -> dict:
         """Show cleanup preview with button-style navigation"""
-        # First show the scan results
-        self._display_scan_results(cleaner, scan_results)
+        total_files = sum(data['count'] for data in scan_results.values() if data['files'])
+        total_size = sum(data['total_size'] for data in scan_results.values() if data['files'])
+        title = f"PROJECT CLEANUP PREVIEW - {total_files} FILES ({cleaner.format_size(total_size)})"
         
-        # Then show options menu with button navigation
+        content = []
+        for category, data in scan_results.items():
+            if data['files']:
+                icon = clean_icon() if cleaner.is_safe_to_delete(category) else warning_icon()
+                desc = cleaner.get_category_description(category)
+                count = data['count']
+                size_str = cleaner.format_size(data['total_size'])
+                content.append(f"{icon} {desc:<35} | {count:>5} items | {size_str:>10}")
+
         options = [
             f"{clean_icon()} Proceed with Cleanup",
             f"{icons.get_icon('info')} Show Detailed File List",
@@ -844,119 +976,24 @@ class SubrealGUI:
         ]
         
         current_selection = 0
-        
         while True:
-            self._display_cleanup_options_menu(cleaner, scan_results, options, current_selection)
-            
+            self._display_boxed_menu(title, content_lines=content, options=options, current_selection=current_selection)
             key = self.get_key_input()
             if key == 'UP' and current_selection > 0:
                 current_selection -= 1
             elif key == 'DOWN' and current_selection < len(options) - 1:
                 current_selection += 1
-            elif key == 'LEFT':
-                if current_selection > 0:
-                    current_selection -= 1
-            elif key == 'RIGHT':
-                if current_selection < len(options) - 1:
-                    current_selection += 1
             elif key == 'ENTER':
-                if current_selection == 0:  # Proceed with cleanup
+                if current_selection == 0:
                     return self._get_cleanup_options(cleaner, scan_results)
-                elif current_selection == 1:  # Show detailed list
+                elif current_selection == 1:
                     self._show_detailed_preview(cleaner, scan_results)
                     continue
-                elif current_selection == 2:  # Cancel
+                elif current_selection == 2:
                     return None
             elif key == 'ESC':
                 return None
-    
-    def _display_scan_results(self, cleaner: ProjectCleaner, scan_results: dict):
-        """Display the scan results summary"""
-        self.clear_screen()
-        self.show_banner()
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title = bold(bright_orange("PROJECT CLEANUP PREVIEW"))
-        print(f"|{title.center(66 + len(title) - len('PROJECT CLEANUP PREVIEW'))}|")
-        print(border)
-        
-        total_files = 0
-        total_size = 0
-        
-        # Show categories and totals
-        for category, data in scan_results.items():
-            if data['files']:
-                icon = clean_icon()
-                if not cleaner.is_safe_to_delete(category):
-                    icon = warning_icon()
-                
-                desc = cleaner.get_category_description(category)
-                count = data['count']
-                size_str = cleaner.format_size(data['total_size'])
-                
-                # Color code based on safety
-                if cleaner.is_safe_to_delete(category):
-                    desc_colored = orange(desc[:35])
-                    count_str = bright_white(f"{count} items")
-                    size_colored = bright_orange(size_str)
-                else:
-                    desc_colored = bright_orange(f"{desc[:35]} (CAUTION)")
-                    count_str = dark_orange(f"{count} items")
-                    size_colored = dark_orange(size_str)
-                
-                print(f"| {bright_orange(icon)} {desc_colored} | {count_str} | {size_colored} |")
-                total_files += count
-                total_size += data['total_size']
-        
-        print(border)
-        
-        # Show totals
-        total_files_colored = bold(bright_white(str(total_files)))
-        total_size_colored = bold(bright_orange(cleaner.format_size(total_size)))
-        print(f"| TOTAL: {total_files_colored} files/folders, {total_size_colored} to be cleaned         |")
-        print(border)
-    
-    def _display_cleanup_options_menu(self, cleaner: ProjectCleaner, scan_results: dict, options: list, current_selection: int):
-        """Display cleanup options menu with button-style navigation"""
-        # Calculate totals for display
-        total_files = sum(data['count'] for data in scan_results.values() if data['files'])
-        total_size = sum(data['total_size'] for data in scan_results.values() if data['files'])
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title_text = f"CLEANUP {total_files} FILES ({cleaner.format_size(total_size)})"
-        title = bold(bright_orange(title_text))
-        print(f"|{title.center(66 + len(title) - len(title_text))}|")
-        print(border)
-        
-        # Display options with selection indicator
-        for i, option in enumerate(options):
-            if i == current_selection:
-                pointer = bright_orange(pointer_icon())
-                option_colored = bold(bright_white(option))
-                line = f"| {pointer} {option_colored}"
-                visible_length = len(f"| {pointer_icon()} {option}")
-                padding = " " * (66 - visible_length)
-                print(f"{line}{padding} |")
-            else:
-                option_colored = orange(option)
-                line = f"|   {option_colored}"
-                visible_length = len(f"|   {option}")
-                padding = " " * (66 - visible_length)
-                print(f"{line}{padding} |")
-        
-        print(border)
-        
-        # Navigation info
-        nav_info = dark_orange("↑↓WS=Move | Enter=Select | ESC=Cancel")
-        nav_line = f"| {nav_info}"
-        nav_padding = " " * (66 - len("| ↑↓WS=Move | Enter=Select | ESC=Cancel"))
-        print(f"{nav_line}{nav_padding} |")
-        print(border)
-    
+
     def _get_cleanup_options(self, cleaner: ProjectCleaner, scan_results: dict) -> dict:
         """Get user options for backup and cleanup preferences"""
         options = [
@@ -966,350 +1003,169 @@ class SubrealGUI:
         ]
         
         current_selection = 0
-        
         while True:
-            self.clear_screen()
-            self.show_banner()
-            
-            border = bright_orange("+" + "="*66 + "+")
-            print(f"\n{border}")
-            
-            title = bold(bright_orange("BACKUP OPTIONS"))
-            print(f"|{title.center(66 + len(title) - len('BACKUP OPTIONS'))}|")
-            print(border)
-            
-            # Info about backup
-            print(f"| {icons.get_icon('info')} Backup list records what files will be deleted        |")
-            print(f"| {icons.get_icon('info')} Useful for recovery if needed later                  |")
-            print(f"| {warning_icon()} Skipping backup saves disk space but no recovery        |")
-            print(border)
-            
-            # Display options
-            for i, option in enumerate(options):
-                if i == current_selection:
-                    pointer = bright_orange(pointer_icon())
-                    option_colored = bold(bright_white(option))
-                    line = f"| {pointer} {option_colored}"
-                    visible_length = len(f"| {pointer_icon()} {option}")
-                    padding = " " * (66 - visible_length)
-                    print(f"{line}{padding} |")
-                else:
-                    option_colored = orange(option)
-                    line = f"|   {option_colored}"
-                    visible_length = len(f"|   {option}")
-                    padding = " " * (66 - visible_length)
-                    print(f"{line}{padding} |")
-            
-            print(border)
-            nav_info = dark_orange("↑↓WS=Move | Enter=Select | ESC=Cancel")
-            nav_line = f"| {nav_info}"
-            nav_padding = " " * (66 - len("| ↑↓WS=Move | Enter=Select | ESC=Cancel"))
-            print(f"{nav_line}{nav_padding} |")
-            print(border)
-            
+            self._display_boxed_menu("BACKUP OPTIONS", content_lines=["Backup list records what files will be deleted", "Useful for recovery if needed later", f"{warning_icon()} Skipping backup saves disk space but no recovery"], options=options, current_selection=current_selection)
             key = self.get_key_input()
             if key == 'UP' and current_selection > 0:
                 current_selection -= 1
             elif key == 'DOWN' and current_selection < len(options) - 1:
                 current_selection += 1
-            elif key == 'LEFT':
-                if current_selection > 0:
-                    current_selection -= 1
-            elif key == 'RIGHT':
-                if current_selection < len(options) - 1:
-                    current_selection += 1
             elif key == 'ENTER':
-                if current_selection == 0:  # Create backup
-                    return {
-                        'create_backup': True,
-                        'proceed': True
-                    }
-                elif current_selection == 1:  # Skip backup
-                    return {
-                        'create_backup': False,
-                        'proceed': True
-                    }
-                elif current_selection == 2:  # Cancel
+                if current_selection == 0:
+                    return {'create_backup': True, 'proceed': True}
+                elif current_selection == 1:
+                    return {'create_backup': False, 'proceed': True}
+                elif current_selection == 2:
                     return None
             elif key == 'ESC':
                 return None
-    
+
     def _show_detailed_preview(self, cleaner: ProjectCleaner, scan_results: dict):
         """Show detailed file list for review"""
-        self.clear_screen()
-        self.show_banner()
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title = bold(bright_orange("DETAILED FILE LIST"))
-        print(f"|{title.center(66 + len(title) - len('DETAILED FILE LIST'))}|")
-        print(border)
-        
+        content = []
         for category, data in scan_results.items():
             if data['files']:
-                print(f"| {bright_orange(cleaner.get_category_description(category))}:")
-                print(f"| {'-' * 62} |")
-                
-                # Show first 10 files as preview
-                for i, file_data in enumerate(data['files'][:10]):
-                    if i >= 10:
-                        remaining = len(data['files']) - 10
-                        print(f"|   {dark_orange(f'... and {remaining} more files')}                 |")
-                        break
-                    
+                content.append(f"{bright_orange(cleaner.get_category_description(category))}:")
+                content.append('-' * 62)
+                for file_data in data['files'][:10]:
                     file_path = str(file_data['path'].relative_to(cleaner.project_root))
                     file_size = cleaner.format_size(file_data['size'])
-                    
-                    # Truncate long paths
                     if len(file_path) > 45:
                         file_path = file_path[:42] + "..."
-                    
-                    print(f"|   {orange(file_path[:45])} ({bright_white(file_size)}) |")
-                
-                print(f"| {' ' * 64} |")
-        
-        print(border)
-        input(f"{dark_orange('Press Enter to continue...')}")
-    
+                    content.append(f"  {orange(file_path):<45} ({bright_white(file_size)}) ")
+                if len(data['files']) > 10:
+                    content.append(f"  {dark_orange(f'... and {len(data['files']) - 10} more files')}")
+                content.append("")
+        self._display_boxed_menu("DETAILED FILE LIST", content_lines=content)
+        input("Press Enter to continue...")
+
     def _perform_cleanup(self, cleaner: ProjectCleaner, scan_results: dict, cleanup_options: dict):
         """Perform the actual cleanup with progress indication"""
-        self.clear_screen()
-        self.show_banner()
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title = bold(bright_orange("CLEANING PROJECT"))
-        print(f"|{title.center(66 + len(title) - len('CLEANING PROJECT'))}|")
-        print(border)
+        self._display_boxed_menu("CLEANING PROJECT", ["Cleaning project...", "Please wait..."])
         
         total_deleted_files = 0
         total_deleted_size = 0
-        backup_file = None
         
-        # Create backup if requested
         if cleanup_options['create_backup']:
             backup_file = cleaner.create_backup_list(scan_results)
-            print(f"| {bright_orange(icons.get_icon('save'))} Backup list created: {Path(backup_file).name[:35]}... |")
-        else:
-            print(f"| {bright_orange(icons.get_icon('info'))} Skipping backup creation to save space...           |")
+            self._display_boxed_menu("CLEANING PROJECT", [f"Backup list created: {Path(backup_file).name}"])
         
-        print(f"| {' ' * 64} |")
-        
-        # Clean categories
         for category, data in scan_results.items():
             if data['files'] and cleaner.is_safe_to_delete(category):
-                desc = cleaner.get_category_description(category)
-                print(f"| {bright_orange(icons.get_icon('working'))} Cleaning {orange(desc[:45])}... |")
-                
+                self._display_progress_bar(1, prefix=f'Cleaning {cleaner.get_category_description(category)}', suffix='Complete')
                 deleted_count, deleted_size = cleaner.clean_category(category, data['files'])
                 total_deleted_files += deleted_count
                 total_deleted_size += deleted_size
-                
-                if deleted_count > 0:
-                    size_str = cleaner.format_size(deleted_size)
-                    print(f"|   {success_icon()} Removed {bright_white(str(deleted_count))} items ({bright_orange(size_str)}) |")
-                else:
-                    print(f"|   {warning_icon()} No files could be removed from this category |")
         
-        # Clean empty directories
-        print(f"| {bright_orange(icons.get_icon('working'))} Removing empty directories...                    |")
         empty_dirs_removed = cleaner.clean_empty_directories()
-        if empty_dirs_removed > 0:
-            print(f"|   {success_icon()} Removed {bright_white(str(empty_dirs_removed))} empty directories              |")
-        else:
-            print(f"|   {icons.get_icon('info')} No empty directories found                       |")
-        
-        print(f"| {' ' * 64} |")
-        print(border)
-        
-        # Show final results
         total_items = total_deleted_files + empty_dirs_removed
+        
         if total_items > 0:
-            final_count = bold(bright_white(str(total_items)))
-            final_size = bold(bright_orange(cleaner.format_size(total_deleted_size)))
-            print(f"| {success_icon()} CLEANUP COMPLETE!                                   |")
-            print(f"| {success_icon()} Removed {final_count} files/folders/directories             |")
-            print(f"| {success_icon()} Freed up {final_size} of disk space                      |")
+            content = [
+                "CLEANUP COMPLETE!",
+                f"Removed {total_items} files/folders/directories",
+                f"Freed up {cleaner.format_size(total_deleted_size)} of disk space"
+            ]
+            if cleanup_options['create_backup']:
+                content.append(f"Backup list saved to: {Path(backup_file).name}")
+            self._display_boxed_menu("SUCCESS", content)
         else:
-            print(f"| {warning_icon()} No files were removed                                |")
-            print(f"| {icons.get_icon('info')} This may be due to permissions or files in use      |")
+            self._display_boxed_menu("INFO", ["No files were removed."])
         
-        print(border)
-        
-        # Show backup info
-        if cleanup_options['create_backup'] and backup_file:
-            print(f"| {icons.get_icon('info')} Backup list saved to: {Path(backup_file).name[:25]}...     |")
-        else:
-            print(f"| {icons.get_icon('info')} No backup created - more space saved!              |")
-        
-        print(border)
-        
-        input(f"\n{dark_orange('Press Enter to continue...')}")
-    
-    def _show_error_dialog(self, title: str, message: str):
-        """Show error dialog"""
-        self.clear_screen()
-        self.show_banner()
-        
-        border = bright_orange("+" + "="*66 + "+")
-        print(f"\n{border}")
-        
-        title_colored = bold(bright_orange(title))
-        print(f"|{title_colored.center(66 + len(title_colored) - len(title))}|")
-        print(border)
-        
-        # Split long messages
-        words = message.split()
-        lines = []
-        current_line = ""
-        
-        for word in words:
-            if len(current_line + " " + word) <= 60:
-                current_line += " " + word if current_line else word
-            else:
-                lines.append(current_line)
-                current_line = word
-        if current_line:
-            lines.append(current_line)
-        
-        for line in lines:
-            error_text = error_icon() + " " + line
-            print(f"| {error_text.ljust(64)} |")
-        
-        print(border)
-        input(f"{dark_orange('Press Enter to continue...')}")
+        input("Press Enter to continue...")
     
     def engine_settings(self):
         """Engine settings submenu with browser-like navigation"""
-        # Add to navigation history
         self.add_to_history("engine_settings", self.current_selection)
-        
         options = [
             f"{icons.get_icon('show')} Show Current Settings",
             f"{icons.get_icon('update')} Update UE Version",
             f"{icons.get_icon('change')} Change UE Directory", 
             f"{back_icon()} Back to Main Menu"
         ]
-        
         while True:
-            self.display_menu_with_selection("ENGINE SETTINGS", options, self.current_selection)
-            
+            self._display_boxed_menu("ENGINE SETTINGS", options=options, current_selection=self.current_selection)
             key = self.get_key_input()
-            choice = None
-            
             if key == 'UP' and self.current_selection > 0:
                 self.current_selection -= 1
             elif key == 'DOWN' and self.current_selection < len(options) - 1:
                 self.current_selection += 1
-            elif key == 'LEFT':
-                # Browser-like back navigation
-                history_entry = self.go_back()
-                if history_entry:
-                    if history_entry['menu'] == 'main_menu':
-                        return  # Go back to main menu
-                    elif history_entry['menu'] == 'engine_settings':
-                        self.current_selection = history_entry['selection']
-            elif key == 'RIGHT':
-                # Browser-like forward navigation
-                history_entry = self.go_forward()
-                if history_entry:
-                    if history_entry['menu'] == 'engine_settings':
-                        self.current_selection = history_entry['selection']
             elif key == 'ENTER':
-                choice = self.current_selection + 1
+                if self.current_selection == 0:
+                    self.show_engine_settings()
+                elif self.current_selection == 1:
+                    self.update_ue_version()
+                elif self.current_selection == 2:
+                    self.change_ue_directory()
+                elif self.current_selection == 3:
+                    break
             elif key == 'ESC':
-                break
-                
-            if choice == 1:
-                self.show_engine_settings()
-            elif choice == 2:
-                self.update_ue_version()
-            elif choice == 3:
-                self.change_ue_directory()
-            elif choice == 4:
                 break
     
     def show_engine_settings(self):
         """Display current engine settings"""
-        self.clear_screen()
-        self.show_banner()
         paths = self.get_paths()
-        print("\n📋 Current Engine Settings:")
-        print("="*40)
-        print(f"UE Version: {self.config['ue_version']}")
-        print(f"UE Directory: {self.config['ue_dir']}")
-        print(f"Editor Executable: {paths['editor_exe']}")
-        print(f"Build Tool: {paths['build_tool']}")
-        input("\nPress Enter to continue...")
+        content = [
+            f"UE Version: {self.config['ue_version']}",
+            f"UE Directory: {self.config['ue_dir']}",
+            f"Editor Executable: {paths['editor_exe']}",
+            f"Build Tool: {paths['build_tool']}"
+        ]
+        self._display_boxed_menu("ENGINE SETTINGS", content_lines=content)
+        input("Press Enter to continue...")
     
     def update_ue_version(self):
         """Update Unreal Engine version"""
-        self.clear_screen()
-        self.show_banner()
-        current = self.config["ue_version"]
-        new_version = input(f"Enter new UE version [{current}]: ").strip()
-        
-        if new_version and new_version != current:
+        self._display_boxed_menu("UPDATE UE VERSION", [f"Current version: {self.config['ue_version']}"])
+        new_version = input("Enter new UE version: ").strip()
+        if new_version and new_version != self.config["ue_version"]:
             self.config["ue_version"] = new_version
             if self.save_config():
-                print("[✓] UE version updated successfully!")
+                self._display_boxed_menu("SUCCESS", ["UE version updated successfully!"])
             else:
-                print("[X] Failed to save configuration.")
+                self._display_boxed_menu("ERROR", ["Failed to save configuration."])
         else:
-            print("No changes made.")
-            
-        input("\nPress Enter to continue...")
+            self._display_boxed_menu("INFO", ["No changes made."])
+        input("Press Enter to continue...")
     
     def change_ue_directory(self):
         """Change Unreal Engine directory"""
-        self.clear_screen()
-        self.show_banner()
-        current = self.config["ue_dir"]
-        print(f"Current UE directory: {current}")
+        self._display_boxed_menu("CHANGE UE DIRECTORY", [f"Current directory: {self.config['ue_dir']}"])
         new_dir = input("Enter new UE directory: ").strip()
-        
         if new_dir:
             if Path(new_dir).exists():
                 self.config["ue_dir"] = new_dir
                 if self.save_config():
-                    print("[✓] UE directory updated and validated!")
+                    self._display_boxed_menu("SUCCESS", ["UE directory updated and validated!"])
                 else:
-                    print("[X] Failed to save configuration.")
+                    self._display_boxed_menu("ERROR", ["Failed to save configuration."])
             else:
                 confirm = input("[!] Directory not found. Save anyway? (y/n): ")
                 if confirm.lower().startswith('y'):
                     self.config["ue_dir"] = new_dir
                     if self.save_config():
-                        print("[!] UE directory updated (not validated).")
+                        self._display_boxed_menu("INFO", ["UE directory updated (not validated)."])
                     else:
-                        print("[X] Failed to save configuration.")
+                        self._display_boxed_menu("ERROR", ["Failed to save configuration."])
         else:
-            print("No changes made.")
-            
-        input("\nPress Enter to continue...")
+            self._display_boxed_menu("INFO", ["No changes made."])
+        input("Press Enter to continue...")
     
     def path_configuration(self):
         """Path configuration submenu - same as customize_config but as menu option"""
-        self.clear_screen()
         self.customize_config()
-        input("\nPress Enter to continue...")
     
     def run(self):
         """Main application loop"""
-        # Show initial setup on first run or if config is invalid
         if not self.config_file.exists() or not self.config:
             self.initial_setup()
         else:
             self.clear_screen()
             self.show_banner()
         
-        # Main menu loop with navigation handling
         while True:
             result = self.show_main_menu()
             
-            # Handle navigation returns
             if result == "project_management":
                 self.project_management()
                 continue
@@ -1317,7 +1173,6 @@ class SubrealGUI:
                 self.engine_settings() 
                 continue
             
-            # Handle regular menu choices
             choice = result if isinstance(result, int) else None
             if choice == 1:
                 self.build_project()
@@ -1331,22 +1186,25 @@ class SubrealGUI:
                 self.path_configuration()
             elif choice == 6:
                 self.clear_screen()
-                # Thank you message with colors
                 farewell = bold(bright_orange("Thank you for using Subreal Engine Console GUI!"))
-                exit_icon_colored = bright_orange(exit_icon())
+                exit_icon_colored = orange(exit_icon())
                 print(f"\n{exit_icon_colored} {farewell} {exit_icon_colored}")
                 sys.exit(0)
 
 def main():
-    """Entry point"""
+    """Entry point - replaces launch_gui.bat functionality"""
     try:
+        print(bright_orange("Starting Subreal Engine Console GUI..."))
+        time.sleep(0.5)  # Brief pause for user to see startup message
         app = SubrealGUI()
         app.run()
     except KeyboardInterrupt:
-        print("\n\n👋 Goodbye!")
+        print(f"\n\n{orange('👋')} {bold(bright_orange('Goodbye!'))} {orange('👋')}")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        print(f"\n{bold(bright_orange('UNEXPECTED ERROR'))}")
+        print(f"{orange('Error:')} {str(e)}")
+        input("Press Enter to exit...")
         sys.exit(1)
 
 if __name__ == "__main__":

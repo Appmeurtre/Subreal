@@ -6,50 +6,33 @@ Provides ANSI color codes for terminal styling
 
 import os
 import sys
+import re
 
 # ANSI Color Codes
 class Colors:
     # Reset
     RESET = '\033[0m'
     
-    # Basic Colors
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
+    # Basic Colors - limited to complement orange theme
     WHITE = '\033[37m'
     
     # Bright Colors
-    BRIGHT_BLACK = '\033[90m'
-    BRIGHT_RED = '\033[91m'
-    BRIGHT_GREEN = '\033[92m'
-    BRIGHT_YELLOW = '\033[93m'
-    BRIGHT_BLUE = '\033[94m'
-    BRIGHT_MAGENTA = '\033[95m'
-    BRIGHT_CYAN = '\033[96m'
     BRIGHT_WHITE = '\033[97m'
     
-    # Orange theme (#FF9800 approximation)
-    ORANGE = '\033[38;5;208m'  # Closest ANSI to #FF9800
-    BRIGHT_ORANGE = '\033[38;5;214m'
-    DARK_ORANGE = '\033[38;5;202m'
+    # Orange theme - primary color scheme
+    DARK_ORANGE = '\033[38;5;166m'    # Darker orange #D2691E
+    ORANGE = '\033[38;5;208m'         # Standard orange #FF8C00
+    BRIGHT_ORANGE = '\033[38;5;214m'  # Bright orange #FFA500
+    LIGHT_ORANGE = '\033[38;5;215m'   # Light orange #FFAD5A
     
-    # RGB Color support (if terminal supports it)
-    ORANGE_RGB = '\033[38;2;255;152;0m'  # #FF9800
+    # RGB Color support (if terminal supports it) - consistent orange palette
+    ORANGE_RGB = '\033[38;2;255;140;0m'   # #FF8C00
+    DARK_ORANGE_RGB = '\033[38;2;210;105;30m'  # #D2691E
     
-    # Background Colors
-    BG_BLACK = '\033[40m'
-    BG_RED = '\033[41m'
-    BG_GREEN = '\033[42m'
-    BG_YELLOW = '\033[43m'
-    BG_BLUE = '\033[44m'
-    BG_MAGENTA = '\033[45m'
-    BG_CYAN = '\033[46m'
+    # Background Colors - orange theme only
     BG_WHITE = '\033[47m'
     BG_ORANGE = '\033[48;5;208m'
+    BG_DARK_ORANGE = '\033[48;5;166m'
     
     # Styles
     BOLD = '\033[1m'
@@ -86,6 +69,38 @@ class ColorManager:
             return f"{color_code}{text}{Colors.RESET}"
         return text
     
+    def _get_color_code(self, color_string):
+        match = re.search(r';5;(\d+)m', color_string)
+        if match:
+            return int(match.group(1))
+        return None
+
+    def gradient(self, text, colors):
+        if not self.colors_enabled:
+            return text
+
+        color_codes = [self._get_color_code(c) for c in colors]
+        if any(c is None for c in color_codes):
+            return text
+
+        gradient_text = ""
+        num_colors = len(color_codes)
+        len_text = len(text)
+
+        for i, char in enumerate(text):
+            ratio = i / (len_text - 1) if len_text > 1 else 0
+            color_index = int(ratio * (num_colors - 1))
+            
+            local_ratio = (ratio * (num_colors - 1)) - color_index
+            
+            code1 = color_codes[color_index]
+            code2 = color_codes[color_index + 1] if color_index < num_colors - 1 else color_codes[color_index]
+            
+            color_code = int(code1 + (code2 - code1) * local_ratio)
+            gradient_text += f"\033[38;5;{color_code}m{char}"
+
+        return gradient_text + Colors.RESET
+
     def orange(self, text):
         """Apply orange color to text"""
         return self.colorize(text, Colors.ORANGE_RGB)
@@ -131,3 +146,9 @@ def underline(text):
 
 def bright_white(text):
     return color_manager.bright_white(text)
+
+def gradient_orange(text):
+    return color_manager.gradient(text, [Colors.DARK_ORANGE, Colors.ORANGE, Colors.BRIGHT_ORANGE])
+
+def light_orange(text):
+    return color_manager.colorize(text, Colors.LIGHT_ORANGE)

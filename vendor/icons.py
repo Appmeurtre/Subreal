@@ -17,9 +17,9 @@ class Icons:
             # Test if we can encode Unicode characters
             test_char = "●"  # Simple Unicode bullet
             test_char.encode(sys.stdout.encoding or 'utf-8')
-            # Additional check for Windows console
+            # Force ASCII on Windows for better compatibility
             if sys.platform.startswith('win'):
-                return False  # Force ASCII on Windows for compatibility
+                return False
             return True
         except (UnicodeEncodeError, AttributeError):
             return False
