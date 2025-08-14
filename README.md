@@ -1,234 +1,211 @@
-# 🎮 Subreal Engine
+# 🎮 Subreal Engine Console GUI
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Unreal%20Engine-5.3-blue?style=for-the-badge&logo=unrealengine" alt="Unreal Engine 5.3">
-  <img src="https://img.shields.io/badge/C%2B%2B-14.34+-00599C?style=for-the-badge&logo=cplusplus" alt="C++">
-  <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows" alt="Windows">
+  <img src="https://img.shields.io/badge/Python-3.7+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.7+">
+  <img src="https://img.shields.io/badge/Unreal%20Engine-4.27%2B%20%7C%205.x-0E1128?style=for-the-badge&logo=unrealengine&logoColor=white" alt="Unreal Engine">
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-4285F4?style=for-the-badge" alt="Cross Platform">
   <img src="https://img.shields.io/badge/License-GPL%20v3-yellow?style=for-the-badge" alt="GPLv3 License">
 </div>
 
 <div align="center">
-  <h3>🚀 IDE-Free Unreal Engine Development Setup</h3>
-  <p><strong>Develop Unreal Engine projects with your favorite text editor - no Visual Studio required!</strong></p>
+  <h3>🚀 Professional Console-Based Project Management for Unreal Engine</h3>
+  <p><strong>A comprehensive Python-based GUI tool for managing Unreal Engine projects without heavyweight IDEs</strong></p>
 </div>
 
 ---
 
-## 📋 Table of Contents
-- [About](#-about)
-- [Features](#-features)
-- [Requirements](#-requirements)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Batch Commands](#-batch-commands)
-- [Creating a Project from Scratch](#-creating-a-project-from-scratch)
-- [Troubleshooting](#-troubleshooting)
-- [Contributing](#-contributing)
-- [Credits](#-credits)
-
 ## 🎯 About
 
-**Subreal Engine** is a lightweight development setup that eliminates the need for heavyweight IDEs when working with Unreal Engine. Named after Sublime Text (but compatible with any text editor), this setup provides a streamlined workflow for C++ game development.
+**Subreal Engine Console GUI** is my personal solution to the bloat and complexity of modern IDEs. After years of fighting with Visual Studio's sluggish performance and overwhelming interface, I decided to build something better—a lightweight, fast, and intuitive terminal-based tool for Unreal Engine development.
 
-### Why Subreal?
-- **🚀 Fast**: No IDE overhead - compile and run directly
-- **🎨 Flexible**: Use ANY text editor you prefer
-- **📦 Minimal**: Only essential tools required
-- **⚡ Efficient**: Batch scripts for common operations
-- **🔧 Customizable**: Easy to adapt to your workflow
+This project represents my philosophy: **powerful tools don't need to be heavy**. Built with Python and featuring a carefully crafted orange-themed interface, it provides everything you need for professional Unreal Engine development without the IDE overhead.
 
-## ✨ Features
+### Why I Built This
+- **🚫 No More Bloat**: Tired of waiting for Visual Studio to load, index, and respond
+- **⚡ Instant Performance**: Python application that starts immediately and stays responsive
+- **🎨 Thoughtful Design**: Every interface element designed for efficiency and clarity
+- **🔧 Complete Solution**: All essential tools in one cohesive, well-integrated package
+- **🛡️ Professional Quality**: Enterprise-grade safety features with automatic backups
+- **📦 Clean Architecture**: Monolithic design that's easy to understand and maintain
 
-- **IDE-Independent Development**: Write code in Sublime Text, VS Code, Vim, or any editor
-- **Automated Build System**: Simple batch scripts for building and launching
-- **Module-Based Architecture**: Clean separation of game modules
-- **Perforce Integration**: Pre-configured `.p4ignore` for version control
-- **Git LFS Support**: Optimized for large binary assets
-- **Custom Logging System**: Built-in logging infrastructure
-- **Hot Reload Support**: Iterate quickly without editor restarts
+## ✨ Key Features
 
-## 🔧 Requirements
+### 🏗️ **Project Management**
+- **Project Building**: Visual progress tracking with detailed error reporting
+- **Editor Launch**: Direct Unreal Editor launching with validation
+- **Project Information**: Comprehensive project analysis and path validation
+- **Directory Management**: Quick access to project folders and files
 
-### Core Requirements
-| Component | Version | Required |
+### 🔧 **Advanced Project Renaming**
+- **Smart Detection**: Automatically identifies Blueprint-only vs C++ projects
+- **Safe Renaming**: Creates backups before any modifications
+- **C++ Support**: Handles source files, headers, modules, and build configurations
+- **Blueprint Support**: Simple renaming with configuration updates
+- **Validation**: Comprehensive name validation with helpful warnings
+- **Rollback**: Automatic restoration if renaming fails
+
+### 🧹 **Project Cleanup**
+- **Intelligent Scanning**: Identifies build cache, temporary files, and artifacts
+- **Safe Removal**: Only deletes regenerable files and directories
+- **Size Analysis**: Shows disk space that will be freed
+- **Backup Creation**: Optional backup lists for recovery
+- **Category-Based**: Organized cleanup by file type and importance
+
+### ⚙️ **Engine Configuration**
+- **Path Management**: Easy Unreal Engine installation path configuration
+- **Version Handling**: Support for multiple UE versions
+- **Validation**: Automatic path and installation verification
+- **Cross-Platform**: Windows and macOS support with platform-specific optimizations
+
+### 🎨 **User Experience**
+- **Intuitive Navigation**: Arrow keys, WASD controls, and browser-style history
+- **Visual Feedback**: Progress bars, colored status indicators, and clear messaging
+- **Error Handling**: Comprehensive error reporting with troubleshooting hints
+- **Professional Design**: Consistent branding and polished interface elements
+
+## 🔧 Technical Architecture
+
+### **Modern Python Design**
+- **Object-Oriented**: Clean class-based architecture with separation of concerns
+- **Modular Structure**: Vendor modules for colors, icons, project operations
+- **Type Safety**: Type hints and validation throughout
+- **Error Resilience**: Comprehensive exception handling and recovery
+
+### **Cross-Platform Compatibility**
+- **Windows**: Native console integration with proper ANSI support
+- **macOS**: Terminal.app compatibility with Unix-style navigation
+- **Python 3.7+**: Modern Python features with backward compatibility
+
+### **Professional Code Quality**
+- **Documentation**: Comprehensive docstrings and inline comments
+- **Standards**: PEP 8 compliant code with consistent formatting
+- **Testing**: Built-in validation and error simulation
+- **Maintenance**: Easy to extend and modify codebase
+
+## 📋 Requirements
+
+| Component | Version | Platform |
 |-----------|---------|----------|
-| MSVC Compiler for C++ | 14.34.31933+ | ✅ |
-| Windows 10 SDK | 10.0.18362.0+ | ✅ |
-| LLVM Clang | 14.0.1 | ✅ |
-| .NET Framework | 4.6.2 Targeting Pack | ✅ |
-| .NET | 6.0 | ✅ |
-| Visual Studio | 2022 v17.4+ | ⚠️ Optional |
-| Unreal Engine | 5.3 | ✅ |
-
-### Recommended Editor Extensions
-
-#### 🔵 Visual Studio Code
-```bash
-code --install-extension CAPTNCAPS.ue4-snippets
-```
-
-#### 🟣 Sublime Text
-```bash
-Package Control: Install Package > Unreal Snippets
-```
-
-## 📥 Installation
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/subreal-engine.git
-cd subreal-engine
-```
-
-### 2. Configure Environment
-Edit `vars.bat` to match your Unreal Engine installation:
-```batch
-rem Update this line with your UE5 installation path
-set UE5_DIR=C:\Program Files\Epic Games\UE_5.3
-```
-
-### 3. Build the Project
-```bash
-build.bat
-```
-
-### 4. Launch the Editor
-```bash
-editor.bat
-```
+| **Python** | 3.7+ | Windows, macOS |
+| **Unreal Engine** | 4.27+ or 5.x | Any supported platform |
+| **Operating System** | Windows 10/11, macOS 10.15+ | |
+| **Terminal** | Windows Console, Terminal.app | Platform native |
 
 ## 🚀 Quick Start
 
+### **Instant Launch**
 ```bash
-# 1. Build the project
-build.bat
+# Windows - Double-click
+Subreal_GUI.bat
 
-# 2. Open in Unreal Editor
-editor.bat
+# macOS - Double-click  
+Subreal_GUI.command
 
-# 3. Start coding in your favorite editor!
+# Manual launch (any platform)
+python subreal_gui.py
 ```
 
-## 📁 Project Structure
+### **First-Time Setup**
+1. **Launch Application**: Use platform-appropriate launcher
+2. **Initial Configuration**: Choose default or custom configuration
+3. **Path Validation**: Application validates all paths automatically
+4. **Ready to Use**: Start building and managing projects immediately
+
+## 🏗️ Project Structure
 
 ```
-Subreal/
-├── 📂 Config/              # Engine and game configuration
-│   ├── DefaultEngine.ini
-│   ├── DefaultGame.ini
-│   └── DefaultInput.ini
-├── 📂 Content/             # Game assets (tracked by Git LFS)
-│   └── Maps/
-│       └── SubrealMap.umap
-├── 📂 Source/              # C++ source code
-│   ├── Subreal.Target.cs
-│   ├── SubrealEditor.Target.cs
-│   └── SubrealCore/        # Primary game module
-│       ├── Public/
-│       │   └── SubrealCore.h
-│       ├── Private/
-│       │   ├── SubrealCore.cpp
-│       │   ├── Log.h
-│       │   └── Log.cpp
-│       └── SubrealCore.Build.cs
-├── 📄 Subreal.uproject     # Unreal project file
-├── 📄 .gitignore           # Git ignore rules
-├── 📄 .gitattributes       # Git LFS configuration
-└── 📄 .p4ignore            # Perforce ignore rules
+subreal/
+├── 📄 subreal_gui.py           # Main application with integrated functionality
+├── 📂 vendor/                  # Modular component library
+│   ├── 🎨 colors.py           # Terminal color management
+│   ├── 🔧 icons.py            # Cross-platform icon system  
+│   ├── 🧹 cleaner.py          # Project cleanup utilities
+│   └── 🔄 project_renamer.py  # Advanced renaming engine
+├── 🚀 Subreal_GUI.bat         # Windows double-click launcher
+├── 🚀 Subreal_GUI.command     # macOS double-click launcher
+├── 📖 README.md               # This documentation
+└── 📂 Subreal/                # Example Unreal Engine project
+    ├── Config/                # Engine configuration
+    ├── Content/               # Game assets
+    ├── Source/                # C++ source code
+    └── Subreal.uproject       # Project file
 ```
 
-## 🛠️ Batch Commands
+## 💻 Advanced Usage
 
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `build.bat` | Compile the project | `build.bat` |
-| `editor.bat` | Launch Unreal Editor | `editor.bat [optional_args]` |
-| `vars.bat` | Environment variables | Automatically called by other scripts |
-
-## 🏗️ Creating a Project from Scratch
-
-### Step-by-Step Guide
-
-1. **Create Project Directory**
-   ```bash
-   mkdir MyGame
-   cd MyGame
-   ```
-
-2. **Create Project File** (`MyGame.uproject`)
-   ```json
-   {
-     "FileVersion": 3,
-     "EngineAssociation": "5.3",
-     "Modules": [
-       {
-         "Name": "MyGameCore",
-         "Type": "Runtime",
-         "LoadingPhase": "Default"
-       }
-     ]
-   }
-   ```
-
-3. **Setup Source Structure**
-   ```bash
-   mkdir Source
-   cd Source
-   ```
-
-4. **Create Target Files**
-   - `MyGame.Target.cs` (Game target)
-   - `MyGameEditor.Target.cs` (Editor target)
-   - `MyGameServer.Target.cs` (Optional: Server target)
-
-5. **Create Primary Module**
-   ```bash
-   mkdir MyGameCore
-   cd MyGameCore
-   mkdir Public Private
-   ```
-
-6. **Add Module Files**
-   - `MyGameCore.Build.cs` - Build configuration
-   - `Public/MyGameCore.h` - Module header
-   - `Private/MyGameCore.cpp` - Module implementation
-   - `Private/Log.h` - Logging header
-   - `Private/Log.cpp` - Logging implementation
-
-## 🔍 Troubleshooting
-
-### Batch Files Not Working?
-```batch
-rem Verify your paths in vars.bat:
-set UE5_DIR=YOUR_UNREAL_ENGINE_PATH
-set UE5EDITOR_EXE=%UE5_DIR%\Engine\Binaries\Win64\UnrealEditor.exe
+### **Project Renaming Workflow**
+```bash
+1. Analysis     → Detect project type (Blueprint/C++)
+2. Validation   → Verify new name and show warnings
+3. Confirmation → Review changes and create backup
+4. Execution    → Rename files, update references
+5. Verification → Validate results and cleanup
 ```
 
-### Different Unreal Engine Version?
-Check the [Platform SDK Requirements](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-5.3-release-notes) for your version.
+### **Cleanup Categories**
+- **Temporary Cache**: Build cache, intermediate files
+- **Build Artifacts**: Compiled binaries, debug files  
+- **IDE Files**: Generated project files
+- **UE Generated**: Engine logs, crashes, profiling data
+- **Asset Cache**: Cooked assets, shader cache
 
-### Source-Built Engine?
-Update `vars.bat` with your custom engine location.
+### **Keyboard Shortcuts**
+| Key | Action |
+|-----|--------|
+| `↑↓` or `WS` | Navigate menu items |
+| `Enter` | Select/Execute |
+| `ESC` | Back/Cancel |
+| `←→` | History navigation |
+
+## 🛠️ Development Highlights
+
+This project demonstrates several advanced development practices:
+
+### **Software Architecture**
+- **Single Responsibility**: Each module handles one specific domain
+- **Dependency Injection**: Configuration and utilities passed to components
+- **State Management**: Clean separation of UI state and business logic
+- **Error Boundaries**: Isolated error handling with graceful degradation
+
+### **User Experience Design**
+- **Progressive Enhancement**: Features unlock based on project complexity
+- **Defensive Programming**: Validates all user input and system state
+- **Accessibility**: Keyboard-only navigation with visual indicators
+- **Responsive Design**: Adapts to different terminal sizes and capabilities
+
+### **Code Quality Practices**
+- **Type Safety**: Comprehensive type hints and validation
+- **Documentation**: Self-documenting code with clear naming
+- **Testing**: Built-in validation and error simulation
+- **Maintenance**: Modular design for easy extension and modification
+
+## 🎓 Portfolio Showcase
+
+This project showcases:
+
+- **✅ Full-Stack Development**: Complete application from UI to business logic
+- **✅ Cross-Platform Programming**: Windows and macOS compatibility
+- **✅ File System Operations**: Safe file manipulation with backup/restore
+- **✅ Process Management**: External process launching and monitoring
+- **✅ Configuration Management**: JSON-based settings with validation
+- **✅ User Interface Design**: Terminal-based GUI with professional polish
+- **✅ Error Handling**: Comprehensive exception management and recovery
+- **✅ Documentation**: Professional README and inline documentation
+- **✅ Code Organization**: Clean architecture with modular design
+- **✅ Version Control**: Git best practices with meaningful commits
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+This is a portfolio project, but suggestions and feedback are welcome! The codebase is designed to be easily extensible and well-documented for learning purposes.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## 📜 License
 
-## 👏 Credits
-
-- **Yılmaz Seyhan** - Creator and Maintainer
-- **Alex Forsythe** - Original inspiration for IDE-free workflow
+This project is licensed under the GPL v3 License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
-  <p><strong>Made with ❤️ by ylmz</strong></p>
-  <p>Istanbul, Turkey 🇹🇷</p>
+  <p><strong>Built with 🧡 by Yılmaz Seyhan</strong></p>
+  <p><em>"Why use bloated IDEs when you can build something better?"</em></p>
+  <p>🚀 <strong>Lightweight tools for serious developers</strong></p>
 </div>
